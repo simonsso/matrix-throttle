@@ -1,11 +1,19 @@
 package org.jenkinsci.plugins.matrix_throttle;
 
 
-import hudson.matrix.*;
+//import hudson.matrix.*;
 import hudson.AbortException;
 import hudson.Extension;
 import hudson.Util;
 import hudson.console.ModelHyperlinkNote;
+import hudson.matrix.MatrixAggregator;
+import hudson.matrix.MatrixChildAction;
+import hudson.matrix.MatrixConfiguration;
+import hudson.matrix.MatrixExecutionStrategy;
+import hudson.matrix.MatrixExecutionStrategyDescriptor;
+import hudson.matrix.MatrixRun;
+import hudson.matrix.Messages;
+import hudson.matrix.MatrixBuild;
 import hudson.matrix.MatrixBuild.MatrixBuildExecution;
 import hudson.model.BuildListener;
 import hudson.model.Cause.UpstreamCause;
@@ -90,6 +98,10 @@ public ThrottledMatrixExecutionStrategyImpl(){
         			 boolean isPending=currentConfiguration.isInQueue();
         			 if(!isBuilding&& !isPending){
         				 dirty=true;
+        				 Result ans=getResult(execution,pendingConfigurations[i]);
+        		         logger.println(Messages.MatrixBuild_Completed(ModelHyperlinkNote.encodeTo(pendingConfigurations[i]),ans ));
+        		         r=r.combine(ans);
+
         				 pendingConfigurations[i]=null;
         				 numberRunningParalellInstances--;
         			 }
@@ -118,17 +130,25 @@ public ThrottledMatrixExecutionStrategyImpl(){
     			 boolean isBuilding=currentConfiguration.isBuilding();
     			 boolean isPending=currentConfiguration.isInQueue();
     			 if(!isBuilding&& !isPending){
-    				 pendingConfigurations[i]=null;
+    				 Result ans=getResult(execution,pendingConfigurations[i]);
+    		         logger.println(Messages.MatrixBuild_Completed(ModelHyperlinkNote.encodeTo(pendingConfigurations[i]),ans ));
+    		         r=r.combine(ans);
+    		         pendingConfigurations[i]=null;
     				 numberRunningParalellInstances--;
     			 }
     		 }
     	 }
     	 Thread.sleep(1000);
      }
-     //TODO itterate build over all configuration builds to get result
      return r;
      }
-
+ 
+ private Result getResult(MatrixBuildExecution exec,MatrixConfiguration c) {
+     // null indicates that the run was cancelled before it even gets going
+     MatrixRun run = c.getBuildByNumber(exec.getBuild().getNumber());
+     return run!=null ? run.getResult() : Result.ABORTED;
+ }
+ 
  private Result getResult(MatrixRun run) {
      // null indicates that the run was cancelled before it even gets going
      return run!=null ? run.getResult() : Result.ABORTED;
@@ -164,77 +184,21 @@ public ThrottledMatrixExecutionStrategyImpl(){
   */
  private void scheduleConfigurationBuild(MatrixBuildExecution exec, MatrixConfiguration c) {
      MatrixBuild build = (MatrixBuild) exec.getBuild();
-     exec.getListener().getLogger().println( (ModelHyperlinkNote.encodeTo(c)).toString() );
+     exec.getListener().getLogger().println(Messages.MatrixBuild_Triggering(ModelHyperlinkNote.encodeTo(c)));
 
+     
      // filter the parent actions for those that can be passed to the individual jobs.
      List<MatrixChildAction> childActions = Util.filter(build.getActions(), MatrixChildAction.class);
      c.scheduleBuild(childActions, new UpstreamCause((Run)build));
  }
-
- private MatrixRun waitForCompletion(MatrixBuildExecution exec, MatrixConfiguration c) throws InterruptedException, IOException {
-     BuildListener listener = exec.getListener();
-     String whyInQueue = "";
-     long startTime = System.currentTimeMillis();
-
-     // wait for the completion
-     int appearsCancelledCount = 0;
-     while(true) {
-         MatrixRun b = c.getBuildByNumber(exec.getBuild().getNumber());
-
-         // two ways to get beyond this. one is that the build starts and gets done,
-         // or the build gets cancelled before it even started.
-         if(b!=null && !b.isBuilding()) {
-             Result buildResult = b.getResult();
-             if(buildResult!=null)
-                 return b;
-         }
-         Queue.Item qi = c.getQueueItem();
-         if(b==null && qi==null)
-             appearsCancelledCount++;
-         else
-             appearsCancelledCount = 0;
-
-         if(appearsCancelledCount>=5) {
-             // there's conceivably a race condition in computating b and qi, as their computation
-             // are not synchronized. There are indeed several reports of Hudson incorrectly assuming
-             // builds being cancelled. See
-             // http://www.nabble.com/Master-slave-problem-tt14710987.html and also
-             // http://www.nabble.com/Anyone-using-AccuRev-plugin--tt21634577.html#a21671389
-             // because of this, we really make sure that the build is cancelled by doing this 5
-             // times over 5 seconds
-        	 listener.getLogger().println((ModelHyperlinkNote.encodeTo(c)).toString());
-             return null;
-         }
-
-         if(qi!=null) {
-             // if the build seems to be stuck in the queue, display why
-             String why = qi.getWhy();
-             if(!why.equals(whyInQueue) && System.currentTimeMillis()-startTime>5000) {
-                 listener.getLogger().print("Configuration " + ModelHyperlinkNote.encodeTo(c)+" is still in the queue: ");
-                 qi.getCauseOfBlockage().print(listener); //this is still shown on the same line
-                 whyInQueue = why;
-             }
-         }
-         
-         Thread.sleep(1000);
-     }
- }
-
- @Extension
- public static class DescriptorImpl extends MatrixExecutionStrategyDescriptor {
-	private Integer maxParalellInstances;
-    @Override
-    public String getDisplayName() {
-       return "Throtle Matrix Limited";
-    }
      
 	public Integer getMaxParalellInstances() {
 		return maxParalellInstances;
 	}
-
-	public void setMaxParalellInstances(Integer maxParalellInstances) {
-		this.maxParalellInstances = maxParalellInstances;
-	}
+//
+//	public void setMaxParalellInstances(Integer maxParalellInstances) {
+//		this.maxParalellInstances = maxParalellInstances;
+//	}
 	
     public FormValidation doCheckMaxParalellInstances(@QueryParameter String value)
             throws IOException, ServletException {
@@ -246,5 +210,14 @@ public ThrottledMatrixExecutionStrategyImpl(){
         }
     	return FormValidation.ok();
     }
+
+
+@Extension
+public static class DescriptorImpl extends MatrixExecutionStrategyDescriptor {
+   private Integer maxParalellInstances;
+   @Override
+   public String getDisplayName() {
+      return "Throtle Matrix Limited";
+   }
  }
 }
