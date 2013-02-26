@@ -12,6 +12,8 @@ import hudson.model.Cause.UpstreamCause;
 import hudson.model.Queue;
 import hudson.model.Result;
 import hudson.model.Run;
+import hudson.util.FormValidation;
+
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Collection;
@@ -20,7 +22,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.TreeSet;
 
+import javax.servlet.ServletException;
+
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.QueryParameter;
 
 /**
 * {@link MatrixExecutionStrategy} that throttles matrix builds
@@ -33,19 +38,15 @@ import org.kohsuke.stapler.DataBoundConstructor;
 */
 
 @Extension
-public class ThrotledMatrixExecutionStrategyImpl extends MatrixExecutionStrategy {
-private volatile int maxParalellInstances;
+public class ThrottledMatrixExecutionStrategyImpl extends MatrixExecutionStrategy {
+	private final Integer maxParalellInstances;
 
 @DataBoundConstructor
-public ThrotledMatrixExecutionStrategyImpl(Integer maxConcurrentPerNode,
-        Integer maxConcurrentTotal,
-        List<String> categories,
-        boolean throttleEnabled,
-        String throttleOption){
-	maxParalellInstances=maxConcurrentTotal;
+public ThrottledMatrixExecutionStrategyImpl(Integer maxParalellInstances){
+	this.maxParalellInstances=maxParalellInstances;
 }
 
-public ThrotledMatrixExecutionStrategyImpl(){
+public ThrottledMatrixExecutionStrategyImpl(){
 	// TODO Some default values hardcoded for now
 		maxParalellInstances=3;
 		
@@ -221,9 +222,29 @@ public ThrotledMatrixExecutionStrategyImpl(){
 
  @Extension
  public static class DescriptorImpl extends MatrixExecutionStrategyDescriptor {
-     @Override
-     public String getDisplayName() {
-         return "Throtle Limited";
-     }
+	private Integer maxParalellInstances;
+    @Override
+    public String getDisplayName() {
+       return "Throtle Matrix Limited";
+    }
+     
+	public Integer getMaxParalellInstances() {
+		return maxParalellInstances;
+	}
+
+	public void setMaxParalellInstances(Integer maxParalellInstances) {
+		this.maxParalellInstances = maxParalellInstances;
+	}
+	
+    public FormValidation doCheckMaxParalellInstances(@QueryParameter String value)
+            throws IOException, ServletException {
+        try{
+        	Integer.parseInt(value);
+        }
+        catch(NumberFormatException e){
+            return FormValidation.error("Not a number");
+        }
+    	return FormValidation.ok();
+    }
  }
 }
