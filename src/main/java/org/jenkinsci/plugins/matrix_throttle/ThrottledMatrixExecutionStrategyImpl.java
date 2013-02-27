@@ -1,7 +1,5 @@
 package org.jenkinsci.plugins.matrix_throttle;
 
-
-//import hudson.matrix.*;
 import hudson.AbortException;
 import hudson.Extension;
 import hudson.Util;
@@ -15,9 +13,7 @@ import hudson.matrix.MatrixRun;
 import hudson.matrix.Messages;
 import hudson.matrix.MatrixBuild;
 import hudson.matrix.MatrixBuild.MatrixBuildExecution;
-import hudson.model.BuildListener;
 import hudson.model.Cause.UpstreamCause;
-import hudson.model.Queue;
 import hudson.model.Result;
 import hudson.model.Run;
 import hudson.util.FormValidation;
@@ -26,7 +22,6 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.TreeSet;
 
@@ -55,8 +50,9 @@ public ThrottledMatrixExecutionStrategyImpl(Integer maxParalellInstances){
 }
 
 public ThrottledMatrixExecutionStrategyImpl(){
-	// TODO Some default values hardcoded for now
-		maxParalellInstances=3;
+	// Default value -- should not be used if configuration works.
+	// value 0 will not throttle the number of jobs submitted to the queue
+		maxParalellInstances=0;
 		
 	}
  /**
@@ -67,8 +63,6 @@ public ThrottledMatrixExecutionStrategyImpl(){
  public Result run(MatrixBuildExecution execution) throws InterruptedException, IOException {
      PrintStream logger = execution.getListener().getLogger();
 
-     Collection<MatrixConfiguration> touchStoneConfigurations = new HashSet<MatrixConfiguration>();
-     Collection<MatrixConfiguration> delayedConfigurations = new HashSet<MatrixConfiguration>();
      int numberRunningParalellInstances=0;
 
      MatrixConfiguration pendingConfigurations[] =new MatrixConfiguration[maxParalellInstances];
@@ -80,10 +74,6 @@ public ThrottledMatrixExecutionStrategyImpl(){
          if(maxParalellInstances>0 && numberRunningParalellInstances < maxParalellInstances	){
         	 pendingConfigurations[numberRunningParalellInstances++]=c;
         	 scheduleConfigurationBuild(execution, c);
-         }else{
-        	 // TODO trace should not end up here or this is misdesigned
-        	 boolean ishere=false;
-        	 ishere=true;
          }
          while( maxParalellInstances>0 && numberRunningParalellInstances >= maxParalellInstances	){
         	 // Max capacity wait to free resources
@@ -98,9 +88,7 @@ public ThrottledMatrixExecutionStrategyImpl(){
         			 boolean isPending=currentConfiguration.isInQueue();
         			 if(!isBuilding&& !isPending){
         				 dirty=true;
-        				 Result ans=getResult(execution,pendingConfigurations[i]);
-        		         logger.println(Messages.MatrixBuild_Completed(ModelHyperlinkNote.encodeTo(pendingConfigurations[i]),ans ));
-        		         r=r.combine(ans);
+        				 logBuildResult(logger,execution,pendingConfigurations[i]);
 
         				 pendingConfigurations[i]=null;
         				 numberRunningParalellInstances--;
@@ -130,9 +118,7 @@ public ThrottledMatrixExecutionStrategyImpl(){
     			 boolean isBuilding=currentConfiguration.isBuilding();
     			 boolean isPending=currentConfiguration.isInQueue();
     			 if(!isBuilding&& !isPending){
-    				 Result ans=getResult(execution,pendingConfigurations[i]);
-    		         logger.println(Messages.MatrixBuild_Completed(ModelHyperlinkNote.encodeTo(pendingConfigurations[i]),ans ));
-    		         r=r.combine(ans);
+    				 logBuildResult(logger,execution,pendingConfigurations[i]);
     		         pendingConfigurations[i]=null;
     				 numberRunningParalellInstances--;
     			 }
@@ -143,7 +129,21 @@ public ThrottledMatrixExecutionStrategyImpl(){
      return r;
      }
  
- private Result getResult(MatrixBuildExecution exec,MatrixConfiguration c) {
+ private void logBuildResult(PrintStream logger, MatrixBuildExecution execution,
+		MatrixConfiguration matrixConfiguration) throws InterruptedException {
+	 Result ans=getResult(execution,matrixConfiguration);
+	 if(ans==null && execution!=null && matrixConfiguration!=null ){
+		 // Sometimes getResult is not computed when needed sleep and retry.
+		 Integer retries=5;
+		 while(retries-->0 && ans==null){
+			ans=getResult(execution,matrixConfiguration);
+			Thread.sleep(2000);
+		 }
+	 }
+     logger.println(Messages.MatrixBuild_Completed(ModelHyperlinkNote.encodeTo(matrixConfiguration),ans ));
+}
+
+private Result getResult(MatrixBuildExecution exec,MatrixConfiguration c) {
      // null indicates that the run was cancelled before it even gets going
      MatrixRun run = c.getBuildByNumber(exec.getBuild().getNumber());
      return run!=null ? run.getResult() : Result.ABORTED;
@@ -214,7 +214,6 @@ public ThrottledMatrixExecutionStrategyImpl(){
 
 @Extension
 public static class DescriptorImpl extends MatrixExecutionStrategyDescriptor {
-   private Integer maxParalellInstances;
    @Override
    public String getDisplayName() {
       return "Throtle Matrix Limited";
