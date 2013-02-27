@@ -3,3 +3,5 @@
 *.iws
 target
 work
+/.classpath
+/.project
