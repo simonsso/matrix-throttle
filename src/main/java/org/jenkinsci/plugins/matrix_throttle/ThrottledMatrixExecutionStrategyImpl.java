@@ -88,8 +88,10 @@ public ThrottledMatrixExecutionStrategyImpl(){
         			 boolean isPending=currentConfiguration.isInQueue();
         			 if(!isBuilding&& !isPending){
         				 dirty=true;
-        				 logBuildResult(logger,execution,pendingConfigurations[i]);
-
+        				 Result ans=getResult_retry(execution,pendingConfigurations[i]);
+        			     logger.println(Messages.MatrixBuild_Completed(ModelHyperlinkNote.encodeTo(pendingConfigurations[i]),ans ));
+        			     r=r.combine(ans);
+        			     
         				 pendingConfigurations[i]=null;
         				 numberRunningParalellInstances--;
         			 }
@@ -118,7 +120,9 @@ public ThrottledMatrixExecutionStrategyImpl(){
     			 boolean isBuilding=currentConfiguration.isBuilding();
     			 boolean isPending=currentConfiguration.isInQueue();
     			 if(!isBuilding&& !isPending){
-    				 logBuildResult(logger,execution,pendingConfigurations[i]);
+    				 Result ans=getResult_retry(execution,pendingConfigurations[i]);
+    			     logger.println(Messages.MatrixBuild_Completed(ModelHyperlinkNote.encodeTo(pendingConfigurations[i]),ans ));
+    			     r=r.combine(ans);
     		         pendingConfigurations[i]=null;
     				 numberRunningParalellInstances--;
     			 }
@@ -129,7 +133,7 @@ public ThrottledMatrixExecutionStrategyImpl(){
      return r;
      }
  
- private void logBuildResult(PrintStream logger, MatrixBuildExecution execution,
+ private Result getResult_retry(MatrixBuildExecution execution,
 		MatrixConfiguration matrixConfiguration) throws InterruptedException {
 	 Result ans=getResult(execution,matrixConfiguration);
 	 if(ans==null && execution!=null && matrixConfiguration!=null ){
@@ -140,7 +144,7 @@ public ThrottledMatrixExecutionStrategyImpl(){
 			Thread.sleep(2000);
 		 }
 	 }
-     logger.println(Messages.MatrixBuild_Completed(ModelHyperlinkNote.encodeTo(matrixConfiguration),ans ));
+     return ans;
 }
 
 private Result getResult(MatrixBuildExecution exec,MatrixConfiguration c) {
