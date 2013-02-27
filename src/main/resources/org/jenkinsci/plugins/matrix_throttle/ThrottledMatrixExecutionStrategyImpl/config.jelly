@@ -8,6 +8,6 @@
   <!--
   -->
   <f:entry title="Max number of Paralell Instances" field="maxParalellInstances">
-    <f:number clazz="required number" value="${it.maxParalellInstances;}"/>
+    <f:number clazz="required number" value="${0+it.maxParalellInstances;}"/>
   </f:entry>
 </j:jelly>
