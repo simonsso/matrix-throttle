@@ -90,7 +90,9 @@ public ThrottledMatrixExecutionStrategyImpl(){
         				 dirty=true;
         				 Result ans=getResult_retry(execution,pendingConfigurations[i]);
         			     logger.println(Messages.MatrixBuild_Completed(ModelHyperlinkNote.encodeTo(pendingConfigurations[i]),ans ));
-        			     r=r.combine(ans);
+        			     if(ans!=null){
+        			    	 r=r.combine(ans);
+        			     }
         			     
         				 pendingConfigurations[i]=null;
         				 numberRunningParalellInstances--;
@@ -122,7 +124,9 @@ public ThrottledMatrixExecutionStrategyImpl(){
     			 if(!isBuilding&& !isPending){
     				 Result ans=getResult_retry(execution,pendingConfigurations[i]);
     			     logger.println(Messages.MatrixBuild_Completed(ModelHyperlinkNote.encodeTo(pendingConfigurations[i]),ans ));
-    			     r=r.combine(ans);
+    			     if(ans!=null){
+    			    	 r=r.combine(ans);
+    			     }
     		         pendingConfigurations[i]=null;
     				 numberRunningParalellInstances--;
     			 }
