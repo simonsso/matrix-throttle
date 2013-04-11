@@ -88,13 +88,15 @@ public ThrottledMatrixExecutionStrategyImpl(){
         			 boolean isPending=currentConfiguration.isInQueue();
         			 if(!isBuilding&& !isPending){
         				 dirty=true;
-        				 Result ans=getResult_retry(execution,pendingConfigurations[i]);
-        			     logger.println(Messages.MatrixBuild_Completed(ModelHyperlinkNote.encodeTo(pendingConfigurations[i]),ans ));
+        				 Result ans=getResult_retry(execution,currentConfiguration);
+        			     logger.println(Messages.MatrixBuild_Completed(ModelHyperlinkNote.encodeTo(currentConfiguration),ans ));
         			     if(ans!=null){
         			    	 r=r.combine(ans);
         			     }
         			     
         				 pendingConfigurations[i]=null;
+            			 notifyEndBuild(getMatrixRun(execution,currentConfiguration),execution.getAggregators());
+
         				 numberRunningParalellInstances--;
         			 }
         		 }
@@ -122,11 +124,12 @@ public ThrottledMatrixExecutionStrategyImpl(){
     			 boolean isBuilding=currentConfiguration.isBuilding();
     			 boolean isPending=currentConfiguration.isInQueue();
     			 if(!isBuilding&& !isPending){
-    				 Result ans=getResult_retry(execution,pendingConfigurations[i]);
-    			     logger.println(Messages.MatrixBuild_Completed(ModelHyperlinkNote.encodeTo(pendingConfigurations[i]),ans ));
+    				 Result ans=getResult_retry(execution,currentConfiguration);
+    			     logger.println(Messages.MatrixBuild_Completed(ModelHyperlinkNote.encodeTo(currentConfiguration),ans ));
     			     if(ans!=null){
     			    	 r=r.combine(ans);
     			     }
+					 notifyEndBuild(getMatrixRun(execution,currentConfiguration),execution.getAggregators());
     		         pendingConfigurations[i]=null;
     				 numberRunningParalellInstances--;
     			 }
@@ -142,7 +145,7 @@ public ThrottledMatrixExecutionStrategyImpl(){
 	 Result ans=getResult(execution,matrixConfiguration);
 	 if(ans==null && execution!=null && matrixConfiguration!=null ){
 		 // Sometimes getResult is not computed when needed sleep and retry.
-		 Integer retries=5;
+		 Integer retries=8;
 		 while(retries-->0 && ans==null){
 			ans=getResult(execution,matrixConfiguration);
 			Thread.sleep(2000);
@@ -151,6 +154,10 @@ public ThrottledMatrixExecutionStrategyImpl(){
      return ans;
 }
 
+ private MatrixRun getMatrixRun(MatrixBuildExecution exec,MatrixConfiguration c) {
+     // null indicates that the run was cancelled before it even gets going
+     return(c.getBuildByNumber(exec.getBuild().getNumber()));
+ } 
 private Result getResult(MatrixBuildExecution exec,MatrixConfiguration c) {
      // null indicates that the run was cancelled before it even gets going
      MatrixRun run = c.getBuildByNumber(exec.getBuild().getNumber());
