@@ -53,7 +53,6 @@ public ThrottledMatrixExecutionStrategyImpl(){
 	// Default value -- should not be used if configuration works.
 	// value 0 will not throttle the number of jobs submitted to the queue
 		maxParalellInstances=0;
-		
 	}
  /**
   * Filter to select a number of combinations to build first
@@ -84,8 +83,9 @@ public ThrottledMatrixExecutionStrategyImpl(){
         			 // Null pointer in array repack later. 
         			 dirty=true;
         		 }else{
-        			 boolean isBuilding=currentConfiguration.isBuilding();
         			 boolean isPending=currentConfiguration.isInQueue();
+        			 boolean isBuilding=currentConfiguration.isBuilding();
+        			 
         			 if(!isBuilding&& !isPending){
         				 dirty=true;
         				 Result ans=getResult_retry(execution,currentConfiguration);
