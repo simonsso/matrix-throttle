@@ -20,19 +20,24 @@
 
         <p class="view"><a href="https://github.com/simonsso/matrix-throttle">View the Project on GitHub <small>simonsso/matrix-throttle</small></a></p>
 
-
         <ul>
-          <li><a href="https://github.com/simonsso/matrix-throttle/zipball/master">Download <strong>ZIP File</strong></a></li>
           <li><a href="https://github.com/simonsso/matrix-throttle/tarball/master">Download <strong>TAR Ball</strong></a></li>
           <li><a href="https://github.com/simonsso/matrix-throttle">View On <strong>GitHub</strong></a></li>
-          <li><a href="https://buildhive.cloudbees.com/job/simonsso/job/matrix-throttle/org.jenkins-ci.plugins$matrix-throttle/lastSuccessfulBuild/artifact/">Latest build from buildhive <strong>GitHub</strong></a></li>
+          <li><a href="https://buildhive.cloudbees.com/job/simonsso/job/matrix-throttle/org.jenkins-ci.plugins$matrix-throttle/lastSuccessfulBuild/artifact/">Latest build from <strong>buildhive</strong></a></li>
         </ul>
       </header>
       <section>
         <h3>
 <a name="welcome-to-matrix-throttle" class="anchor" href="#welcome-to-matrix-throttle"><span class="octicon octicon-link"></span></a>Welcome to Matrix Throttle</h3>
 
-<p>This automatic page generator is the easiest way to create beautiful pages for all of your projects. Author your page content here using GitHub Flavored Markdown, select a template crafted by a designer, and publish. After your page is generated, you can check out the new branch:</p>
+<p>
+<h1>Project overview</h1>
+Matrix throttle will limit the number of child jobs launched simultaneous.
+
+<h1>Motivation</h1>
+Consider an environment with several projects but a limited number of licenses for certain tools. If a single commit spawns 100 jobs and you can run 10 of them in parallel? With the default jenkins implementation you were had the option of running them in sequence or clogging up all execution nodes with jobs waiting for the a licence. With all jobs aggressively asking for a key to run, manuel users will be stuck in queue for hours until it is their turn.
+
+The Matrix-throttle jenkins addon will limit the number of child jobs submitted to the executor
 
 <pre><code>
 </code></pre>
